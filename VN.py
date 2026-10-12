@@ -5,7 +5,7 @@ if len(sys.argv) != 4 :
     sys.exit(1)
 ON_IP = sys.argv[1]
 VN_IP = sys.argv[2]
-UDP_PORT = sys.argv[3]
+UDP_PORT = int(sys.argv[3])
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
     udp.bind((VN_IP, UDP_PORT))
@@ -16,4 +16,12 @@ PORT = 5000
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp.connect((ON_IP, PORT))
 tcp.send("made a tcp connecion")
-tcp.
+buf = b""
+while True:
+    data = tcp.recv(1024)
+    if not data :
+        print("TCP closed connection")
+        break
+    buf += data
+
+
