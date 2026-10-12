@@ -10,18 +10,18 @@ udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
     udp.bind((VN_IP, UDP_PORT))
 except socket.error as e:
-    print("Failure to bind or port already in use" + {e})
+    print("Failure to bind or port already in use" + str(e))
     sys.exit(1)
 PORT = 5000
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp.connect((ON_IP, PORT))
-tcp.send("made a tcp connecion")
+tcp.send(f"{VN_IP},{UDP_PORT}".encode())
 buf = b""
 while True:
     data = tcp.recv(1024)
     if not data :
-        print("TCP closed connection")
         break
     buf += data
 
-
+msg = buf.decode().strip()
+print(msg)

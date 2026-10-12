@@ -4,11 +4,25 @@
 #include <arpa/inet.h>
 
 using namespace std;
-#define server_ip "10.2.44.57"
+#define server_ip "127.0.0.8"
 #define backlog 26
 
 vector<string> connection_msg(char* buf) {
-    
+    string ip = "";
+    char* p = buf;
+    while(*p != '\0') {
+        if(*p != ',') {
+            ip += *p;
+            p++;
+        }
+        else break;
+    }
+    string port = "";
+    while(*p != '\0') {
+        port += *p;
+        p++;
+    }
+    return {ip, port};
 }
 
 int main(int argc, char* argv[]) {
@@ -85,10 +99,10 @@ int main(int argc, char* argv[]) {
     }
 
     sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(5000);
     server_addr.sin_addr.s_addr = inet_addr(server_ip);
-    memset(&(server_addr), '\0', 8);
 
     if (bind(server_socket, (sockaddr*)&server_addr, sizeof(server_addr))<0) {
         cout << "Bind failed" << endl;
@@ -102,10 +116,11 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     int i = 0;
-    vector<vector<string>> M(26, vector<string(2));
+    vector<vector<string>> M(26, vector<string>(2));
 
         sockaddr_in client_addr;
-        int client_socket = accept(server_socket, (ockaddr*)&client_addr, sizeof(client_addr));
+        socklen_t len_client = sizeof(client_addr);
+        int client_socket = accept(server_socket, (sockaddr*)&client_addr, (socklen_t*)(&len_client));
         if (client_socket < 0) {
             cout << "Failed to accept client connection";
             return -1;
@@ -115,11 +130,19 @@ int main(int argc, char* argv[]) {
         int b = recv(client_socket, buffer, sizeof(buffer)-1, 0);
         if (b > 0) {
             M[i] = connection_msg(buffer);
+            cout << M[i][0] << " " << M[i][1] << endl;
             i += 1;
         }
+        string out = string(1, (char)('A'+i- 1)) + ", " + M[i-1][0] + ", " + M[i-1][1] + ", 0";
 
-        close(clientSocket);
-        
-    close(serverSocket);
+        size_t sent = 0;
+        while (sent < out.size()) {
+            ssize_t n = send(client_socket, out.c_str() + sent, out.size() - sent, 0);
+            sent += n;
+        }
+
+        close(client_socket);
+
+    close(server_socket);
     file.close();
 }

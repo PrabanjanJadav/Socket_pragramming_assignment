@@ -15,3 +15,7 @@
 		-1	1
 # Costs from D to E
 			7
+
+# kill -9 4280
+# ps -p 4280
+# ss -ltnp | grep 5000
