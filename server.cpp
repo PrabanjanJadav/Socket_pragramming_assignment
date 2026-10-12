@@ -7,6 +7,10 @@ using namespace std;
 #define server_ip "10.2.44.57"
 #define backlog 26
 
+vector<string> connection_msg(char* buf) {
+    
+}
+
 int main(int argc, char* argv[]) {
     if(argc <= 1) {
         cout << "No file name specified" << endl;
@@ -51,7 +55,7 @@ int main(int argc, char* argv[]) {
         // cout << line << endl;
     }
     N = A.size() + 1;
-    vector<vector<int>> Adj(N, vector<int>(N));
+    vector<vector<int>> Adj(26, vector<int>(26,-1));
 
     for(int i=0; i<N; i++) {
         for(int j=0; j<N; j++) {
@@ -86,7 +90,7 @@ int main(int argc, char* argv[]) {
     server_addr.sin_addr.s_addr = inet_addr(server_ip);
     memset(&(server_addr), '\0', 8);
 
-    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr))<0) {
+    if (bind(server_socket, (sockaddr*)&server_addr, sizeof(server_addr))<0) {
         cout << "Bind failed" << endl;
         close(server_socket);
         return -1;
@@ -97,9 +101,25 @@ int main(int argc, char* argv[]) {
         close(server_socket);
         return -1;
     }
+    int i = 0;
+    vector<vector<string>> M(26, vector<string(2));
 
-    
+        sockaddr_in client_addr;
+        int client_socket = accept(server_socket, (ockaddr*)&client_addr, sizeof(client_addr));
+        if (client_socket < 0) {
+            cout << "Failed to accept client connection";
+            return -1;
+        }
 
+        char buffer[1024] = {0};
+        int b = recv(client_socket, buffer, sizeof(buffer)-1, 0);
+        if (b > 0) {
+            M[i] = connection_msg(buffer);
+            i += 1;
+        }
 
+        close(clientSocket);
+        
+    close(serverSocket);
     file.close();
 }
