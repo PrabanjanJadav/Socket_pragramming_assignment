@@ -4,7 +4,7 @@
 #include <arpa/inet.h>
 
 using namespace std;
-#define server_ip "127.0.0.8"
+#define server_ip "10.0.0.3"
 #define backlog 26
 
 class Virtual_Node {
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
                     out += "(" + string(1, (char)('A'+j)) + ", " + M[j].client_ip + ", " + to_string(M[j].udp_port) + ", " + to_string(Adj[k][j]) + ")";
                 }
             }
-            out += "]"
+            out += "]";
             size_t sent = 0;
             while (sent < out.size()) {
                 ssize_t n = send(M[k].client_socket, out.c_str() + sent, out.size() - sent, 0);
