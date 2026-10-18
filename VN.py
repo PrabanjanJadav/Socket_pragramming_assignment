@@ -54,7 +54,8 @@ def parse_lsp_pkt(msg):
     return a
 
 def print_graph():
-    print("Graph received from in Virtual Node: " + originID)
+    print()
+    print("Graph received from Virtual Node: " + originID)
     for c in nodes.keys():
         print("Source " + c + ": " + nodes[c][1])
     print()
