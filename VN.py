@@ -1,5 +1,24 @@
 import socket
 import sys
+
+def parse_lsp(msg):
+    if msg[0]=='[':
+        msg = msg[1:]
+
+    n = len(msg)
+    ans = []
+    for i in range(0,n):
+        if msg[i]==',':
+            continue
+        if msg[i]=='(':
+            j = i
+            while msg[j]!=')':
+                j+=1
+            a, b, c = msg[i+1, j].split(',')
+            ans.append(a+"="+b)
+    return ",".join(ans)
+
+
 if len(sys.argv) != 4 :
     print("Please give atleast four argument : on_ip, vn_ip, udp_pn")
     sys.exit(1)
@@ -15,13 +34,15 @@ except socket.error as e:
 PORT = 5000
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp.connect((ON_IP, PORT))
-tcp.send(f"{VN_IP},{UDP_PORT}".encode())
+tcp.send(f"({VN_IP},{UDP_PORT})".encode())
 buf = b""
+
 while True:
     data = tcp.recv(1024)
-    if not data :
+    if not data:
         break
     buf += data
-
-msg = buf.decode().strip()
-print(msg)
+    while b"]" in buf:
+        msg, buf = buf.split(b"]", 1)
+        LSP_state = parse_lsp(msg.decode())
+        print(LSP_state)
