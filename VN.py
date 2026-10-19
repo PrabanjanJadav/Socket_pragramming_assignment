@@ -60,6 +60,27 @@ def print_graph():
         print("Source " + c + ": " + nodes[c][1])
     print()
 
+def nodes_to_graph(nodes):
+    names = set(nodes)
+    for value in nodes.values():
+        for e in value[1].split(","):
+            names.add(e.split("=")[0])
+    names = sorted(names)
+    n = len(names)
+
+    graph_matrix = np.full((n, n), -1)
+    idx = {}
+    for i in range(n):
+        idx[names[i]] = i
+    for key, value in nodes.items():
+        i = idx[key]
+        graph_matrix[i][i] = 0
+        indi = value[1].split(",")
+        for e in indi:
+            fin = e.split("=")
+            graph_matrix[i][idx[fin[0]]] = int(fin[1])
+            print(key + " to " + fin[0] + " = " + fin[1])
+    return graph_matrix
 
 if len(sys.argv) != 4 :
     print("Please give atleast four argument : on_ip, vn_ip, udp_pn")
@@ -116,4 +137,4 @@ while True:
         msg =  build_lsp_pkt()
         for c in neigh.keys():
             udp.sendto(msg,(neigh[c][0],neigh[c][1]))
-        print_graph()
+        nodes_to_graph(nodes)
