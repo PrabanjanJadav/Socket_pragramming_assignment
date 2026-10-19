@@ -97,7 +97,7 @@ except socket.error as e:
 PORT = 5000
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 tcp.connect((ON_IP, PORT))
-tcp.send(f"({VN_IP},{UDP_PORT})".encode())
+tcp.send(f"({VN_IP},{UDP_PORT})".encode('utf-8'))
 buf = b""
 
 while True:

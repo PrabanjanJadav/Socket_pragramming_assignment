@@ -2,9 +2,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace std;
-#define server_ip "10.0.0.3"
+#define server_ip "10.34.214.240"
 #define backlog 26
 
 class Virtual_Node {
@@ -52,23 +54,13 @@ Virtual_Node connection_msg(char* buf, int k) {
     return Virtual_Node(k, stoi(port), ip);
 }
 
-int main(int argc, char* argv[]) {
-    if(argc <= 1) {
-        cout << "No file name specified" << endl;
-        return -1;
-    }
-
-    string file_name = argv[1];
-    ifstream file(file_name);
-
-    if(!file.is_open()) {
-        cout << "The file is not open" << endl;
-        return -1;
-    }
-
+bool load_config(const string& path, vector<vector<int>>& Adj, int& N) {
     string line;
-    int N = -1, i = 0;
-    vector<vector<int>> Adj(26, vector<int>(26,-1));
+    int i = 0;
+    ifstream file(path);
+    if(!file.is_open()) return false;
+
+    Adj = vector<vector<int>>(26, vector<int>(26,-1));
 
     while(getline(file, line)) {
         if (!line.empty() && line.back() == '\r') {
@@ -115,6 +107,54 @@ int main(int argc, char* argv[]) {
         }
         cout << endl;
     }
+    return true;
+}
+
+void send_link_state(vector<vector<int>>& Adj, int k, vector<Virtual_Node>& M) {
+    if(M[k].client_socket == -1) return;
+    string out = "["; 
+    for(int j=0; j<26; j++) {
+        if(Adj[k][j]!=-1) {
+            if(out.size() > 1) out += ",";
+            out += "(" + string(1, (char)('A'+j)) + ", " + M[j].client_ip + ", " + to_string(M[j].udp_port) + ", " + to_string(Adj[k][j]) + ")";
+        }
+    }
+    out += "]";
+    size_t sent = 0;
+    while (sent < out.size()) {
+        ssize_t n = send(M[k].client_socket, out.c_str() + sent, out.size() - sent, 0);
+        if(n <= 0) {
+            cout << "Error no LSP message sent" << endl;
+            break;
+        }
+        sent += n;
+    }
+    return;
+}
+
+int main(int argc, char* argv[]) {
+    if(argc <= 1) {
+        cout << "No file name specified" << endl;
+        return -1;
+    }
+
+    string file_name = argv[1];
+    ifstream file(file_name);
+
+    if(!file.is_open()) {
+        cout << "The file is not open" << endl;
+        return -1;
+    }
+
+    string line;
+    int N = -1, i = 0;
+    vector<vector<int>> Adj(26, vector<int>(26,-1));
+
+    if(!load_config(file_name, Adj, N)) { 
+        cout << "Could not read config" << endl; 
+        return -1; 
+    }
+
     int server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(server_socket < 0) {
         cout << "Error in socket creation" << endl;
@@ -126,6 +166,9 @@ int main(int argc, char* argv[]) {
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(5000);
     server_addr.sin_addr.s_addr = inet_addr(server_ip);
+
+    int opt = 1;
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     if (bind(server_socket, (sockaddr*)&server_addr, sizeof(server_addr))<0) {
         cout << "Bind failed" << endl;
@@ -158,28 +201,23 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    for(int k=0; k<26; k++) send_link_state(Adj, k, M);
+    struct stat st;
+    stat(file_name.c_str(), &st);
+    timespec last = st.st_mtim;
+
     while(true) {
-        for(int k=0; k<26; k++) {
-            if(M[k].client_socket == -1) continue;
-            string out = "["; 
-            for(int j=0; j<26; j++) {
-                if(Adj[k][j]!=-1) {
-                    if(out!="") out += ",";
-                    out += "(" + string(1, (char)('A'+j)) + ", " + M[j].client_ip + ", " + to_string(M[j].udp_port) + ", " + to_string(Adj[k][j]) + ")";
-                }
+        this_thread::sleep_for(chrono::seconds(1));
+
+        if(stat(file_name.c_str(), &st) != 0) continue;
+        if(st.st_mtim.tv_sec != last.tv_sec || st.st_mtim.tv_nsec != last.tv_nsec) {
+            last = st.st_mtim;
+            if(!load_config(file_name, Adj, N)) { 
+                cout << "Could not read config" << endl; 
+                return -1; 
             }
-            out += "]";
-            size_t sent = 0;
-            while (sent < out.size()) {
-                ssize_t n = send(M[k].client_socket, out.c_str() + sent, out.size() - sent, 0);
-                if(n <= 0) {
-                    cout << "Error no LSP message sent" << endl;
-                    return -1;
-                }
-                sent += n;
-            }
+            for(int k=0; k<26; k++) send_link_state(Adj, k, M);
         }
-        this_thread::sleep_for(chrono::seconds(10));
     }
     
 
@@ -188,5 +226,4 @@ int main(int argc, char* argv[]) {
     }
 
     close(server_socket);
-    file.close();
 }
