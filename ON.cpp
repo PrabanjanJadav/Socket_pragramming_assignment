@@ -101,12 +101,16 @@ bool load_config(const string& path, vector<vector<int>>& Adj, int& N) {
         }
     }
 
+    cout << "[";
     for(int i=0; i<N; i++) {
+        cout << "[";
         for(int j=0; j<N; j++) {
             cout << Adj[i][j] << " ";
         }
-        cout << endl;
+        if(i < N-1) cout << "]" << endl;
+        else cout << "]";
     }
+    cout << "]" << endl;
     return true;
 }
 
