@@ -1,7 +1,7 @@
 import socket
 import sys
 import select, time
-
+import numpy as np
 nodes = {}
 originID = None
 neigh = {}
@@ -79,7 +79,7 @@ def nodes_to_graph(nodes):
         for e in indi:
             fin = e.split("=")
             graph_matrix[i][idx[fin[0]]] = int(fin[1])
-            print(key + " to " + fin[0] + " = " + fin[1])
+            # print(key + " to " + fin[0] + " = " + fin[1])
     return graph_matrix
 
 if len(sys.argv) != 4 :
@@ -119,7 +119,9 @@ while True:
             print(LSP_state)
             msg =  build_lsp_pkt()
             for c in neigh.keys():
-                udp.sendto(msg,(neigh[c][0],neigh[c][1]))
+                if udp.sendto(msg,(neigh[c][0],neigh[c][1]))<0:
+                    print("Message not sent to ON")
+                    sys.exit()
 
     if udp in readable:
         data, addr = udp.recvfrom(1024)
@@ -128,7 +130,9 @@ while True:
             for c in neigh.keys():
                 if (neigh[c][0], neigh[c][1]) == addr:
                     continue
-                udp.sendto(data,(neigh[c][0], neigh[c][1]))
+                if udp.sendto(data,(neigh[c][0], neigh[c][1])) < 0:
+                    print("Message not sent to neighbour ")
+                    sys.exit()
 
     if time.time() >= next_period:
         next_period = time.time() + time_period
@@ -137,4 +141,4 @@ while True:
         msg =  build_lsp_pkt()
         for c in neigh.keys():
             udp.sendto(msg,(neigh[c][0],neigh[c][1]))
-        nodes_to_graph(nodes)
+        print(nodes_to_graph(nodes))
