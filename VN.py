@@ -53,13 +53,6 @@ def parse_lsp_pkt(msg):
     nodes[a][1] = c
     return a
 
-def print_graph():
-    print()
-    print("Graph received from Virtual Node: " + originID)
-    for c in nodes.keys():
-        print("Source " + c + ": " + nodes[c][1])
-    print()
-
 def nodes_to_graph(nodes):
     names = set(nodes)
     for value in nodes.values():
@@ -96,7 +89,12 @@ except socket.error as e:
     sys.exit(1)
 PORT = 5000
 tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-tcp.connect((ON_IP, PORT))
+try:
+    tcp.connect((ON_IP, PORT))
+except socket.error as e:
+    print(f"Cannot connect to ON at {ON_IP}:{PORT} ({e})")
+    sys.exit(1)
+
 tcp.send(f"({VN_IP},{UDP_PORT})".encode('utf-8'))
 buf = b""
 
@@ -119,9 +117,11 @@ while True:
             print(LSP_state)
             msg =  build_lsp_pkt()
             for c in neigh.keys():
-                if udp.sendto(msg,(neigh[c][0],neigh[c][1]))<0:
-                    print("Message not sent to ON")
-                    sys.exit()
+                try:
+                    udp.sendto(msg,(neigh[c][0],neigh[c][1]))
+                except socket.error as e:
+                    print(f"Error in msg reading from server {e}")
+                    sys.exit(1)
 
     if udp in readable:
         data, addr = udp.recvfrom(1024)
@@ -130,9 +130,11 @@ while True:
             for c in neigh.keys():
                 if (neigh[c][0], neigh[c][1]) == addr:
                     continue
-                if udp.sendto(data,(neigh[c][0], neigh[c][1])) < 0:
-                    print("Message not sent to neighbour ")
-                    sys.exit()
+                try:
+                    udp.sendto(data,(neigh[c][0], neigh[c][1]))
+                except socket.error as e:
+                    print(f"Message not sent to neighbour {e}")
+                    sys.exit(1)
 
     if time.time() >= next_period:
         next_period = time.time() + time_period
