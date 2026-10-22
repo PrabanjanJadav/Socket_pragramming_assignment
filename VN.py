@@ -76,7 +76,7 @@ def nodes_to_graph(nodes):
     return graph_matrix
 
 if len(sys.argv) != 4 :
-    print("Please give atleast four argument : on_ip, vn_ip, udp_pn")
+    print("Please give atleast three argument : on_ip, vn_ip, udp_pn")
     sys.exit(1)
 ON_IP = sys.argv[1]
 VN_IP = sys.argv[2]
@@ -121,11 +121,14 @@ while True:
                     udp.sendto(msg,(neigh[c][0],neigh[c][1]))
                 except socket.error as e:
                     print(f"Error in msg reading from server {e}")
-                    sys.exit(1)
+                    # sys.exit(1)
 
     if udp in readable:
         data, addr = udp.recvfrom(1024)
-        k = parse_lsp_pkt(data.decode())
+        try:
+            k = parse_lsp_pkt(data.decode())
+        except Exception:
+            k = ""
         if (k!=""):
             for c in neigh.keys():
                 if (neigh[c][0], neigh[c][1]) == addr:
@@ -134,7 +137,7 @@ while True:
                     udp.sendto(data,(neigh[c][0], neigh[c][1]))
                 except socket.error as e:
                     print(f"Message not sent to neighbour {e}")
-                    sys.exit(1)
+                    # sys.exit(1)
 
     if time.time() >= next_period:
         next_period = time.time() + time_period

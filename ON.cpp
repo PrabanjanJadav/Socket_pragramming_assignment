@@ -47,11 +47,18 @@ Virtual_Node connection_msg(char* buf, int k) {
         }
     }
     string port = "";
-    while(*p != ')') {
+    while(*p != ')' && *p != '\0') {
         port += *p;
         p++;
     }
     return Virtual_Node(k, stoi(port), ip);
+}
+
+string read_file(const string& p) {
+    ifstream f(p);
+    stringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
 }
 
 bool load_config(const string& path, vector<vector<int>>& Adj, int& N) {
@@ -75,12 +82,18 @@ bool load_config(const string& path, vector<vector<int>>& Adj, int& N) {
         stringstream ss(line);
         string t;
         int j = i+1;
-        while(getline(ss, t, '\t')) {
+        while(ss >> t) {
             if(t.empty()) {
                 continue;
             }
             // cout << t << endl;
-            Adj[i][j] = stoi(t);
+            try {
+                Adj[i][j] = stoi(t);
+            }
+            catch(...) {
+                cout << "Issue in Stoi" << endl;
+                return false;
+            }
             j+=1;
         }
 
@@ -116,7 +129,7 @@ bool load_config(const string& path, vector<vector<int>>& Adj, int& N) {
 
 void send_link_state(vector<vector<int>>& Adj, int k, vector<Virtual_Node>& M) {
     if(M[k].client_socket == -1) return;
-    string out = "["; 
+    string out = "[";
     for(int j=0; j<26; j++) {
         if(Adj[k][j]!=-1) {
             if(out.size() > 1) out += ",";
@@ -126,7 +139,7 @@ void send_link_state(vector<vector<int>>& Adj, int k, vector<Virtual_Node>& M) {
     out += "]";
     size_t sent = 0;
     while (sent < out.size()) {
-        ssize_t n = send(M[k].client_socket, out.c_str() + sent, out.size() - sent, 0);
+        ssize_t n = send(M[k].client_socket, out.data() + sent, out.size() - sent, 0);
         if(n <= 0) {
             cout << "Error no LSP message sent" << endl;
             break;
@@ -143,14 +156,6 @@ int main(int argc, char* argv[]) {
     }
 
     string file_name = argv[1];
-    ifstream file(file_name);
-
-    if(!file.is_open()) {
-        cout << "The file is not open" << endl;
-        return -1;
-    }
-
-    string line;
     int N = -1, i = 0;
     vector<vector<int>> Adj(26, vector<int>(26,-1));
 
@@ -169,7 +174,12 @@ int main(int argc, char* argv[]) {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(5000);
-    server_addr.sin_addr.s_addr = inet_addr(server_ip);
+    if(argc <= 2) {
+        server_addr.sin_addr.s_addr = inet_addr(server_ip);
+    }
+    else {
+        server_addr.sin_addr.s_addr = inet_addr(argv[2]);
+    }
 
     int opt = 1;
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -206,21 +216,23 @@ int main(int argc, char* argv[]) {
     }
 
     for(int k=0; k<26; k++) send_link_state(Adj, k, M);
-    struct stat st;
-    stat(file_name.c_str(), &st);
-    timespec last = st.st_mtim;
+    string last = read_file(file_name);
 
     while(true) {
         this_thread::sleep_for(chrono::seconds(1));
 
-        if(stat(file_name.c_str(), &st) != 0) continue;
-        if(st.st_mtim.tv_sec != last.tv_sec || st.st_mtim.tv_nsec != last.tv_nsec) {
-            last = st.st_mtim;
-            if(!load_config(file_name, Adj, N)) { 
-                cout << "Could not read config" << endl; 
-                return -1; 
-            }
+        string cur = read_file(file_name);
+        if(cur.empty() || cur == last) continue;
+        last = cur;
+        vector<vector<int>> tem_adj;
+        int temp;
+        if(load_config(file_name, tem_adj, temp)) { 
+            Adj = tem_adj;
+            N = temp;
             for(int k=0; k<26; k++) send_link_state(Adj, k, M);
+        }
+        else {
+            cout << "Could not read config or some error, using old matrix" << endl; 
         }
     }
     
