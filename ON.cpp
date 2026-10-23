@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 using namespace std;
@@ -217,9 +218,25 @@ int main(int argc, char* argv[]) {
 
     for(int k=0; k<26; k++) send_link_state(Adj, k, M);
     string last = read_file(file_name);
+    fcntl(server_socket, F_SETFL, O_NONBLOCK);
 
     while(true) {
         this_thread::sleep_for(chrono::seconds(1));
+        int x = accept(server_socket, NULL, NULL);
+        if(x >= 0 && i < 26) {
+            timeval t = {2, 0};
+            setsockopt(x, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
+            char buffer[1024] = {0};
+            int b = recv(x, buffer, sizeof(buffer)-1, 0);
+            if (b > 0) {
+                M[i] = connection_msg(buffer, x);
+                M[i].print();
+                send_link_state(Adj, i, M);
+                i += 1;
+            }
+            else close(x);
+        }
+        else if(x >= 0) close(x);
 
         string cur = read_file(file_name);
         if(cur.empty() || cur == last) continue;
